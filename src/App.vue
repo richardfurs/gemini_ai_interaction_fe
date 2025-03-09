@@ -9,7 +9,7 @@
 
     <div>
       <div v-if="error" class="rounded-xl bg-amber-700 text-white p-2 mb-3 break-words text-center">
-          {{ error.message }}
+          {{ error }}
       </div>
 
       <div class="block bg-neutral-700 text-white p-2 flex flex-col rounded-xl">
@@ -35,21 +35,19 @@
 
 <script setup lang="ts">
 
-import { ref, reactive, onMounted, nextTick } from 'vue';
+import { ref, reactive, nextTick } from 'vue';
 import Discussion from './components/Discussion.vue';
 
-let queryVal = ref<string>('');
-let answer = ref<string>('');
-let question = ref<string>('');
-let error = ref<object | null>(null);
-let loading = ref<boolean>(false);
+const queryVal = ref<string>('');
+const error = ref<object | null>(null);
+const loading = ref<boolean>(false);
 
 type DiscussionType = {
   question: string;
   answer: string;
 };
 
-let discussionArr = reactive<DiscussionType[]>([]);
+const discussionArr = reactive<DiscussionType[]>([]);
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const discussionRef = ref<HTMLDivElement | null>(null);
@@ -63,39 +61,38 @@ const scrollToBottom = () => {
 };
 
 const sendQuery = async () => {
-  if (error) {
+  if (error.value) {
     error.value = null;
   }
 
-  try {
-    loading.value = true;
+  loading.value = true;
 
-    const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/ask`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: queryVal.value,
-      }),
-    })
+  const response = await fetch(`${import.meta.env.VITE_APP_API_URL}/ask`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: queryVal.value,
+    }),
+  })
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (data.error) {
-      error.value = data.error;
-    } else {
-      discussionArr.push({
-        question: queryVal.value,
-        answer: data.answer
-      })
+  if (!response.ok) {
+    error.value = new Error(data.error.message);
+    loading.value = false;
 
-      queryVal.value = '';
-      scrollToBottom()
-    }
-  } catch (error) {
-    console.error('Error:', error)
+    return;
   }
+
+  discussionArr.push({
+    question: queryVal.value,
+    answer: data.answer
+  })
+
+  queryVal.value = '';
+  scrollToBottom()
 
   loading.value = false;
 }
